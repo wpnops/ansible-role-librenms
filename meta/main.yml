@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  role_name: librenms
+  author: wpnops
+  description: An Ansible role to install and configure librenms
+  license: MIT
+  min_ansible_version: 2.9.11
+  platforms:
+    - name: Ubuntu
+      versions:
+        - bionic
+        - focal
+
+dependencies:
+  - role: nephelaiio.plugins
+  - role: geerlingguy.repo-epel
+    when: (ansible_os_family | lower == 'redhat')
+  - role: nephelaiio.nfs
+    vars:
+      nfs_server: "{{ librenms_nfs_server }}"
+    when: librenms_backup | default(True)
+  - role: geerlingguy.nginx
+    when: false
+  - role: geerlingguy.mysql
+    when: false
+  - role: geerlingguy.php
+    when: false

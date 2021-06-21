@@ -1,0 +1,27 @@
+---
+- name: Converge
+
+  hosts: all
+
+  become: true
+
+  pre_tasks:
+
+    - name: update apt cache.
+      apt:
+        update_cache: yes
+      when: (ansible_os_family | lower) == 'debian'
+      failed_when: False
+      ignore_errors: True
+      changed_when: False
+
+    - name: remove dockerenv
+      file:
+        path: /.dockerenv
+        state: absent
+
+  roles:
+
+    - name: wpnops.librenms
+      vars:
+        configure: 'yes'

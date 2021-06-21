@@ -1,0 +1,290 @@
+---
+- name: include variable overrides
+  set_fact:
+    _librenms_packages: "{{ librenms_package | default(librenms_packages_default | sorted_get(overrides)) }}"
+    _librenms_mysql_packages: "{{ librenms_mysql_packages | default(librenms_mysql_packages_default | sorted_get(overrides)) }}"
+    _librenms_php_version: "{{ librenms_php_version | default(librenms_php_version_default | sorted_get(overrides)) }}"
+  vars:
+    overrides:
+      - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release | lower }}"
+      - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}"
+      - "{{ ansible_distribution | lower }}"
+      - "{{ ansible_os_family | lower }}"
+      - "default"
+  tags:
+    - always
+
+- name: set php packages extra
+  set_fact:
+    _librenms_php_packages_extra: "{{ librenms_php_packages_extra | default(librenms_php_packages_extra_default | sorted_get(overrides)) }}"
+  vars:
+    overrides:
+      - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release | lower }}"
+      - "{{ ansible_distribution | lower }}-{{ ansible_distribution_major_version }}"
+      - "{{ ansible_distribution | lower }}"
+      - "{{ ansible_os_family | lower }}"
+      - "default"
+  tags:
+    - always
+
+- name: inspect packages
+  package_facts:
+    manager: auto
+
+- name: install mysql
+  include_role:
+    name: geerlingguy.mysql
+  vars:
+    mysql_packages: "{{ _librenms_mysql_packages }}"
+    mysql_databases:
+      - name: "{{ librenms_db_name }}"
+        collation: utf8_unicode_ci
+    mysql_users:
+      - name: "{{ librenms_db_user }}"
+        password: "{{ librenms_db_pass }}"
+        priv: "{{ librenms_db_name }}.*:ALL"
+
+- name: disable mysql strict mode
+  lineinfile:
+    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    insertafter: '\[mysqld\]'
+    regexp: '^#?{{ item | split_with("=") | first }}\s*='
+    line: "{{ item }}"
+  with_items:
+    - 'lower_case_table_names=0'
+    - 'innodb_file_per_table=1'
+  notify: restart mysql
+
+- meta: flush_handlers
+
+- name: install php
+  include_role:
+    name: geerlingguy.php
+  vars:
+    php_webserver_daemon: "{{ librenms_php_webserver_daemon }}"
+    php_use_managed_ini: "{{ librenms_php_use_managed_ini }}"
+    php_timezone: "{{ librenms_php_timezone }}"
+    php_memory_limit: "{{ librenms_php_memory_limit }}"
+    php_packages_extra: "{{ _librenms_php_packages_extra }}"
+
+- name: enable php mcrypt
+  command: phpenmod mcrypt
+  changed_when: false
+
+- name: start fpm
+  service:
+    name:  "php{{ _librenms_php_version }}-fpm"
+    state: started
+    enabled: yes
+
+- name: install librenms packages
+  package:
+    name: "{{ _librenms_packages }}"
+    state: latest
+
+- name: install nginx
+  include_role:
+    name: geerlingguy.nginx
+  vars:
+    nginx_remove_default_vhost: true
+    nginx_vhosts: "{{ librenms_nginx_vhosts }}"
+    nginx_user: "{{ librenms_nginx_user }}"
+    nginx_group: "{{ librenms_nginx_group }}"
+    nginx_conf_dir: "{{ librenms_nginx_conf_dir }}"
+    nginx_certificate_hostname: "{{ librenms_nginx_certificate_hostname }}"
+    nginx_certificate_chainfile: "{{ librenms_nginx_certificate_chainfile }}"
+    nginx_certificate_keyfile: "{{ librenms_nginx_certificate_keyfile }}"
+  when: librenms_nginx_install | default(True)
+
+- fail:
+
+- name: inspect packages
+  package_facts:
+    manager: auto
+
+- name: create librenms group
+  group:
+    name: "{{ librenms_group }}"
+
+- name: manage librenms group memberships
+  user:
+    append: yes
+    name: "{{ nginx_user }}"
+    groups: "{{ librenms_group }}"
+  notify:
+    - restart fpm
+    - restart nginx
+
+- name: create librenms user
+  user:
+    name: "{{ librenms_user }}"
+    group: "{{ librenms_group }}"
+    groups: "{{ nginx_group }}"
+    system: yes
+
+- name: create librenms root folder
+  file:
+    path: "{{ librenms_root }}"
+    owner: "{{ librenms_user }}"
+    group: "{{ librenms_group }}"
+    state: directory
+
+- name: clone librenms repository
+  git:
+    repo: https://github.com/librenms/librenms.git
+    dest: "{{ librenms_root }}"
+    version: "{{ librenms_release }}"
+    force: yes
+
+- name: fix librenms repository owner
+  file:
+    path: "{{ librenms_root }}"
+    owner: "{{ librenms_user }}"
+    group: "{{ librenms_group }}"
+    mode: 0771
+    state: directory
+
+- name: set librenms folder permissions
+  command: "{{ item  }}"
+  loop:
+    - "setfacl -d -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
+    - "setfacl -R -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
+
+- name: install librenms
+  command: ./scripts/composer_wrapper.php install --no-dev
+  args:
+    chdir: "{{ librenms_root | dirname }}"
+    creates: "{{ librenms_root }}"
+  changed_when: false
+
+- name: set librenms folder write permissions
+  file:
+    path: "{{ librenms_root }}/{{ item }}"
+    owner: "{{ librenms_user }}"
+    group: "{{ librenms_group }}"
+    state: directory
+    recurse: no
+    mode: 0770
+  with_items:
+    - database
+    - includes
+    - vendor
+    - rrd
+    - bootstrap/cache
+    - storage
+    - storage/framework/sessions
+    - storage/framework/views
+    - storage/framework/cache
+    - logs
+  notify:
+    - restart fpm
+    - restart nginx
+
+- name: manage librenms configuration
+  template:
+    src: config.php.j2
+    dest: "{{ librenms_root }}/config.php"
+    mode: 0750
+  vars:
+    librenms_config_db_name: "{{ librenms_db_name }}"
+    librenms_config_db_user: "{{ librenms_db_user }}"
+    librenms_config_db_pass: "{{ librenms_db_pass }}"
+    librenms_config_root: "{{ librenms_root }}"
+    librenms_config_url: "{{ librenms_url }}"
+    librenms_config_ldap_servers: "{{ librenms_ldap_servers }}"
+    librenms_config_ldap_domain: "{{ librenms_ldap_domain }}"
+    librenms_config_ldap_user: "{{ librenms_ldap_user }}"
+    librenms_config_ldap_pass: "{{ librenms_ldap_pass }}"
+    librenms_config_ldap_admingroup: "{{ librenms_ldap_admingroup }}"
+    librenms_config_ldap_usergroup: "{{ librenms_ldap_usergroup }}"
+  notify:
+    - restart fpm
+    - restart nginx
+
+- name: cron job for cleaup database daily
+  cron:
+    name: cleanupDB
+    job: "{{ librenms_root}}/daily.sh"
+    special_time: daily
+    user: "{{ librenms_user }}"
+
+- name: manage cronjob config
+  copy:
+    src: "{{ librenms_root }}/librenms.nonroot.cron"
+    dest: /etc/cron.d/librenms
+    remote_src: yes
+  notify: restart cron
+
+- name: manage logrotate config
+  copy:
+    src: "{{ librenms_root }}/misc/librenms.logrotate"
+    dest: /etc/logrotate.d/librenms
+    remote_src: yes
+
+- name: create librenms backup target path
+  file:
+    state: directory
+    path: "{{ librenms_backup_target.path }}/librenms"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: mount backup target
+  mount:
+    src: "{{ librenms_backup_target.src }}"
+    path: "{{ librenms_backup_target.path }}"
+    fstype: "{{ librenms_backup_target.fstype }}"
+    opts: "{{ librenms_backup_target.opts }}"
+    state: "{{ librenms_backup_target.state }}"
+  when: librenms_backup | default(True)
+
+- name: create librenms backup script
+  template:
+    src: librenms-backup.sh.j2
+    dest: "{{ librenms_backup_bin }}"
+    group: root
+    owner: root
+    mode: 0750
+  vars:
+    backup_identifier: librenms
+    backup_path: "{{ librenms_backup_target.path }}/librenms"
+    backup_source: "{{ librenms_root }}/config.php {{ librenms_root }}/rrd {{ librenms_root }}/.env"
+    mysql_user: "{{ librenms_db_user }}"
+    mysql_pass: "{{ librenms_db_pass }}"
+    mysql_db: "{{ librenms_db_name }}"
+    retention_period: 3
+  when: librenms_backup | default(True)
+
+- name: create librenms restore script
+  template:
+    src: librenms-restore.sh.j2
+    dest: "{{ librenms_restore_bin }}"
+    group: root
+    owner: root
+    mode: 0750
+  vars:
+    backup_identifier: librenms
+    backup_path: "{{ librenms_backup_target.path }}/librenms"
+    mysql_user: "{{ librenms_db_user }}"
+    mysql_pass: "{{ librenms_db_pass }}"
+    mysql_db: "{{ librenms_db_name }}"
+  when: librenms_backup | default(True)
+
+- name: manage librenms backup cronjob
+  cron:
+    name: librenms-conf-backup
+    job: "{{ librenms_backup_bin }}"
+    special_time: daily
+  when: librenms_backup | default(True)
+
+- name: create librenms backup motd pointers
+  copy:
+    dest: /etc/update-motd.d/99-librenms
+    content: |
+      #!/usr/bin/env bash
+      echo
+      echo run librenms-backup to manually force librenms backup creation
+      echo run librenms-restore to manually restore latest librenms backup
+      echo
+    mode: 0755
+  when: librenms_backup | default(True)

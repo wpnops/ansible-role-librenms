@@ -1,0 +1,5 @@
+---
+- nephelaiio.plugins
+- geerlingguy.nginx
+- geerlingguy.mysql
+- geerlingguy.php
