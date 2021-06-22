@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+#{{ ansible_managed }}
+
+# create temporary directory
+TMPFILE=$(mktemp /tmp/mysqldump.XXXXXX)
+
+# back up database
+/usr/bin/mysqldump -u{{ mysql_user }} -p{{ mysql_pass }} --databases {{ mysql_db }} > $TMPFILE
+
+# create backup archive
+BACKUP_DATE=$(date +%Y%m%d-%H%M%S)
+/bin/tar cvzf {{ backup_path }}/$BACKUP_DATE.{{ backup_identifier }}.tgz {{ backup_source }} $TMPFILE
+
+chmod o-rwx {{ backup_path }}/$BACKUP_DATE.{{ backup_identifier }}.tgz
+
+# clean up temporary directory
+rm -f $TMPFILE
+
+# prune stale backups
+/usr/bin/find {{ backup_path }}/ -name "*\.{{ backup_identifier }}.tgz" -ctime +{{ retention_period }} -delete

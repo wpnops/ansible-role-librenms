@@ -44,7 +44,7 @@ librenms_packages_default:
     - unzip
     - python3
     - python3-pip
-  default: []
+default: []
 
 librenms_state: present
 librenms_url: "http://localhost"
@@ -53,6 +53,7 @@ librenms_php_default_version_debian: 7.4
 librenms_php_fpm_service: "php{{ php_default_version_debian }}-fpm"
 librenms_root: /opt/librenms
 librenms_hostname: "{{ librenms_url | urlsplit('hostname') }}"
+librenms_repo_url: https://github.com/librenms/librenms.git
 librenms_backup_target: "{{ backup_target }}"
 librenms_mysql_packages_default:
   ubuntu-focal:
@@ -108,27 +109,26 @@ librenms_nginx_vhost_proto:
     - listen: "80"
       server_name: "{{ librenms_hostname }}"
       filename: "{{ librenms_hostname }}.http.conf"
-      root: "{{ librenms_root }}/webroot/"
+      root: "{{ librenms_root }}/html"
       index: index.php
-      access_log: "/var/log/nginx/{{ librenms_hostname }}.access.log"
-      error_log: "/var/log/nginx/{{ librenms_hostname }}.error.log"
+      access_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.access.log"
+      error_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.error.log"
       extra_parameters: |
         {{ librenms_nginx_vhost_extra }}
   https:
     - listen: "80"
       server_name: "{{ librenms_hostname }}"
       filename: "{{ librenms_hostname }}.http.conf"
-      root: "{{ librenms_root }}/webroot/"
-      access_log: "/var/log/nginx/{{ librenms_hostname }}.access.log"
-      error_log: "/var/log/nginx/{{ librenms_hostname }}.error.log"
+      access_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.access.log"
+      error_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.error.log"
       extra_parameters: |
         return 301 https://{{ librenms_hostname }}$request_uri;
-    - listen: "443 ssl http2"
+    - listen: "443 ssl"
       server_name: "{{ librenms_hostname }}"
-      root: "{{ librenms_root }}/webroot/"
+      root: "{{ librenms_root }}/html"
       index: index.php
-      access_log: "/var/log/nginx/{{ librenms_hostname }}.access.log"
-      error_log: "/var/log/nginx/{{ librenms_hostname }}.error.log"
+      access_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.access.log"
+      error_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.error.log"
       state: "present"
       filename: "{{ librenms_hostname }}.https.conf"
       extra_parameters: |
@@ -143,39 +143,14 @@ librenms_nginx_vhost_proto:
         charset utf-8;
         gzip on;
         gzip_types text/css application/javascript text/javascript application/x-javascript image/svg+xml text/plain text/xsd text/xsl text/xml image/x-icon;
+        {{ librenms_nginx_vhost_extra }}
 librenms_nginx_vhosts: "{{ librenms_nginx_vhost_proto[librenms_url | urlsplit('scheme')] }}"
 
 librenms_group: librenms
 librenms_user: librenms
-librenms_release: 21.4.0
-librenms_pip_packages:
-  - python3-apt
-  - python3-pip
-  - python3-setuptools
-librenms_packages_ubuntu:
-  - acl
-  - curl
-  - composer
-  - fping
-  - git
-  - graphviz
-  - imagemagick
-  - mariadb-client
-  - mariadb-server
-  - mtr-tiny
-  - nginx-full
-  - nmap
-  - rrdtool
-  - snmp
-  - snmpd
-  - whois
-  - unzip
-  - python3-pymysql
-  - python3-dotenv
-  - python3-redis
-  - python3-setuptools
-  - python3-systemd
+librenms_release: 21.6.0
 
+librenms_db_host: localhost
 librenms_db_name: librenms
 librenms_db_user: librenms
 librenms_db_pass: librenms
@@ -190,3 +165,24 @@ librenms_php_version_default:
 librenms_php_fpm_service: "php{{ _librenms_php_version }}-fpm"
 librenms_php_timezone: "UTC"
 librenms_memory_limit: "4096M"
+librenms_folder_permissions:
+  - database
+  - includes
+  - vendor
+  - rrd
+  - bootstrap/cache
+  - storage
+  - storage/framework/sessions
+  - storage/framework/views
+  - storage/framework/cache
+  - logs
+
+librenms_ldap_servers: ""
+librenms_ldap_domain: ""
+librenms_ldap_user: "ldap"
+librenms_ldap_pass: "ChangeMe01!"
+librenms_ldap_admingroup: ""
+librenms_ldap_usergroup: ""
+librenms_update_channel: "release"
+librenms_oxidized_backend_proto: http
+librenms_oxidized_backend_port: 8888

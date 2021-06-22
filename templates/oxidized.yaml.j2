@@ -1,0 +1,79 @@
+
+---
+resolve_dns: true
+interval: {{ oxidized_config_interval }}
+use_syslog: true
+debug: false
+threads: 30
+timeout: 20
+retries: 3
+prompt: !ruby/regexp /^([\w\s.@\-\:\[\]]+[#>]\s?)$/
+rest: 0.0.0.0:{{ oxidized_config_port }}
+next_adds_job: false
+vars: {}
+groups:
+  f5:
+    username: "{{ oxidized_config_f5_username }}"
+    password: "{{ oxidized_config_f5_password }}"
+    vars:
+      auth_methods:
+        - none
+        - publickey
+        - password
+        - keyboard-interactive
+  powerconnect:
+    username: "{{ oxidized_config_powerconnect_username }}"
+    password: "{{ oxidized_config_powerconnect_password }}"
+  os10:
+    username: "{{ oxidized_config_os10_username }}"
+    password: "{{ oxidized_config_os10_password }}"
+  cisco:
+    username: "{{ oxidized_config_username }}"
+    password: "{{ oxidized_config_password }}"
+  fortigate:
+    username: "{{ oxidized_config_username }}"
+    password: "{{ oxidized_config_password }}"
+models: {}
+pid: "{{ oxidized_config_pid }}"
+vars:
+  remove_secret: true
+stats:
+  history_size: 10
+input:
+  default: ssh
+  debug: false
+  ssh:
+    secure: false
+  ftp:
+    passive: true
+  utf8_encoded: true
+output:
+  default: git
+  git:
+    single_repo: true
+    user: {{ oxidized_config_repo_user }}
+    email: {{ oxidized_config_usermail }}
+    repo: "{{ oxidized_config_repo_dir }}"
+hooks:
+  push_to_remote:
+    type: githubrepo
+    events: [post_store]
+    remote_repo: "{{ oxidized_config_repo_url }}"
+    username: "{{ oxidized_config_repo_user }}"
+    password: "{{ oxidized_config_repo_pass }}"
+source:
+  default: csv
+  csv:
+    file: {{ oxidized_config_inventory }}
+    delimiter: !ruby/regexp /{{ oxidized_config_inventory_delim | default(':') }}/
+    map:
+      name: 0
+      ip: 0
+      model: 1
+      group: 1
+model_map:
+  os10: os10
+  cisco: ios
+  fortigate: fortios
+  powerconnect: powerconnect
+  f5: tmos

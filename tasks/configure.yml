@@ -63,9 +63,18 @@
   vars:
     php_webserver_daemon: "{{ librenms_php_webserver_daemon }}"
     php_use_managed_ini: "{{ librenms_php_use_managed_ini }}"
-    php_timezone: "{{ librenms_php_timezone }}"
     php_memory_limit: "{{ librenms_php_memory_limit }}"
     php_packages_extra: "{{ _librenms_php_packages_extra }}"
+
+- name: set php timezone
+  lineinfile:
+    path: "{{ item }}"
+    regexp: ';?date.timezone\s*='
+    line: "date.timezone = {{ librenms_php_timezone }}"
+  with_items:
+    - "/etc/php/{{ php_default_version_debian }}/cli/php.ini"
+    - "/etc/php/{{ php_default_version_debian }}/fpm/php.ini"
+  notify: restart fpm
 
 - name: enable php mcrypt
   command: phpenmod mcrypt
@@ -96,12 +105,6 @@
     nginx_certificate_keyfile: "{{ librenms_nginx_certificate_keyfile }}"
   when: librenms_nginx_install | default(True)
 
-- fail:
-
-- name: inspect packages
-  package_facts:
-    manager: auto
-
 - name: create librenms group
   group:
     name: "{{ librenms_group }}"
@@ -109,7 +112,7 @@
 - name: manage librenms group memberships
   user:
     append: yes
-    name: "{{ nginx_user }}"
+    name: "{{ librenms_nginx_user }}"
     groups: "{{ librenms_group }}"
   notify:
     - restart fpm
@@ -119,7 +122,7 @@
   user:
     name: "{{ librenms_user }}"
     group: "{{ librenms_group }}"
-    groups: "{{ nginx_group }}"
+    groups: "{{ librenms_nginx_group }}"
     system: yes
 
 - name: create librenms root folder
@@ -131,7 +134,7 @@
 
 - name: clone librenms repository
   git:
-    repo: https://github.com/librenms/librenms.git
+    repo: "{{ librenms_repo_url }}"
     dest: "{{ librenms_root }}"
     version: "{{ librenms_release }}"
     force: yes
@@ -145,40 +148,10 @@
     state: directory
 
 - name: set librenms folder permissions
-  command: "{{ item  }}"
+  command: "{{ item }}"
   loop:
     - "setfacl -d -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
     - "setfacl -R -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
-
-- name: install librenms
-  command: ./scripts/composer_wrapper.php install --no-dev
-  args:
-    chdir: "{{ librenms_root | dirname }}"
-    creates: "{{ librenms_root }}"
-  changed_when: false
-
-- name: set librenms folder write permissions
-  file:
-    path: "{{ librenms_root }}/{{ item }}"
-    owner: "{{ librenms_user }}"
-    group: "{{ librenms_group }}"
-    state: directory
-    recurse: no
-    mode: 0770
-  with_items:
-    - database
-    - includes
-    - vendor
-    - rrd
-    - bootstrap/cache
-    - storage
-    - storage/framework/sessions
-    - storage/framework/views
-    - storage/framework/cache
-    - logs
-  notify:
-    - restart fpm
-    - restart nginx
 
 - name: manage librenms configuration
   template:
@@ -197,9 +170,42 @@
     librenms_config_ldap_pass: "{{ librenms_ldap_pass }}"
     librenms_config_ldap_admingroup: "{{ librenms_ldap_admingroup }}"
     librenms_config_ldap_usergroup: "{{ librenms_ldap_usergroup }}"
+    librenms_config_update_channel: "{{ librenms_update_channel }}"
+    oxidized_backend_proto: "{{ librenms_oxidized_backend_proto }}"
+    oxidized_backend_port: "{{ librenms_oxidized_backend_port }}"
   notify:
     - restart fpm
     - restart nginx
+
+- meta: flush_handlers
+
+- name: set librenms folder write permissions
+  file:
+    path: "{{ librenms_root }}"
+    owner: "{{ librenms_user }}"
+    group: "{{ librenms_group }}"
+    state: directory
+    recurse: yes
+  notify:
+    - restart fpm
+    - restart nginx
+
+- name: install librenms
+  command: |
+    {{ librenms_root }}/scripts/composer_wrapper.php install --no-dev
+  args:
+    creates: "{{ librenms_root }}/composer.phar"
+  become_user: "{{ librenms_user }}"
+  notify:
+    - restart fpm
+
+- name: execute librenms daily
+  command: "{{ librenms_root }}/daily.sh"
+  become_user: "{{ librenms_user }}"
+  notify:
+    - restart fpm
+
+- fail:
 
 - name: cron job for cleaup database daily
   cron:
