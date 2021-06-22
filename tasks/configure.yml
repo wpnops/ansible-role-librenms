@@ -4,6 +4,7 @@
     _librenms_packages: "{{ librenms_package | default(librenms_packages_default | sorted_get(overrides)) }}"
     _librenms_mysql_packages: "{{ librenms_mysql_packages | default(librenms_mysql_packages_default | sorted_get(overrides)) }}"
     _librenms_php_version: "{{ librenms_php_version | default(librenms_php_version_default | sorted_get(overrides)) }}"
+    _librenms_mysql_config_path: "{{ librenms_mysql_config_path | default(librenms_mysql_config_path_default | sorted_get(overrides)) }}"
   vars:
     overrides:
       - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release | lower }}"
@@ -46,7 +47,7 @@
 
 - name: disable mysql strict mode
   lineinfile:
-    path: /etc/mysql/mariadb.conf.d/50-server.cnf
+    path: "{{ _librenms_mysql_config_path }}"
     insertafter: '\[mysqld\]'
     regexp: '^#?{{ item | split_with("=") | first }}\s*='
     line: "{{ item }}"
@@ -72,8 +73,8 @@
     regexp: ';?date.timezone\s*='
     line: "date.timezone = {{ librenms_php_timezone }}"
   with_items:
-    - "/etc/php/{{ php_default_version_debian }}/cli/php.ini"
-    - "/etc/php/{{ php_default_version_debian }}/fpm/php.ini"
+    - "/etc/php/{{ _librenms_php_version }}/cli/php.ini"
+    - "/etc/php/{{ _librenms_php_version }}/fpm/php.ini"
   notify: restart fpm
 
 - name: enable php mcrypt

@@ -46,11 +46,8 @@ librenms_packages_default:
     - python3-pip
 default: []
 
-librenms_state: present
 librenms_url: "http://localhost"
 
-librenms_php_default_version_debian: 7.4
-librenms_php_fpm_service: "php{{ php_default_version_debian }}-fpm"
 librenms_root: /opt/librenms
 librenms_hostname: "{{ librenms_url | urlsplit('hostname') }}"
 librenms_repo_url: https://github.com/librenms/librenms.git
@@ -59,13 +56,19 @@ librenms_backup_identifier: "librenms"
 librenms_backup_bin: "/usr/local/bin/librenms-backup"
 librenms_restore_bin: "/usr/local/bin/librenms-restore"
 librenms_mysql_packages_default:
-  ubuntu-focal:
+  debian:
     - mariadb-client
     - mariadb-server
     - python3-mysqldb
-  debian: []
-  redhat: []
+  redhat:
+    - mariadb-server
+    - MySQL-python
+    - mariadb
   default: []
+librenms_mysql_config_path_default:
+  debian: "/etc/mysql/mariadb.conf.d/50-server.cnf"
+  redhat: "/etc/my.cnf"
+  default: ""
 
 librenms_php_packages_extra_default:
   debian:
@@ -163,7 +166,9 @@ librenms_nfs_server: no
 librenms_php_webserver_daemon: nginx
 librenms_php_use_managed_ini: no
 librenms_php_version_default:
-  debian: 7.4
+  ubuntu-focal: 7.4
+  debian: 7.3
+  redhat: 7.3
   default: ""
 librenms_php_fpm_service: "php{{ _librenms_php_version }}-fpm"
 librenms_php_timezone: "UTC"
