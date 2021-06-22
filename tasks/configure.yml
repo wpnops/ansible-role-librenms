@@ -152,6 +152,7 @@
   loop:
     - "setfacl -d -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
     - "setfacl -R -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
+  changed_when: false
 
 - name: manage librenms configuration
   template:
@@ -177,8 +178,6 @@
     - restart fpm
     - restart nginx
 
-- meta: flush_handlers
-
 - name: set librenms folder write permissions
   file:
     path: "{{ librenms_root }}"
@@ -186,11 +185,9 @@
     group: "{{ librenms_group }}"
     state: directory
     recurse: yes
-  notify:
-    - restart fpm
-    - restart nginx
+  changed_when: false
 
-- name: install librenms
+- name: install librenms dependencies
   command: |
     {{ librenms_root }}/scripts/composer_wrapper.php install --no-dev
   args:
@@ -199,13 +196,10 @@
   notify:
     - restart fpm
 
-- name: execute librenms daily
+- name: run librenms daily
   command: "{{ librenms_root }}/daily.sh"
   become_user: "{{ librenms_user }}"
-  notify:
-    - restart fpm
-
-- fail:
+  changed_when: false
 
 - name: cron job for cleaup database daily
   cron:
@@ -227,23 +221,6 @@
     dest: /etc/logrotate.d/librenms
     remote_src: yes
 
-- name: create librenms backup target path
-  file:
-    state: directory
-    path: "{{ librenms_backup_target.path }}/librenms"
-    owner: root
-    group: root
-    mode: 0755
-
-- name: mount backup target
-  mount:
-    src: "{{ librenms_backup_target.src }}"
-    path: "{{ librenms_backup_target.path }}"
-    fstype: "{{ librenms_backup_target.fstype }}"
-    opts: "{{ librenms_backup_target.opts }}"
-    state: "{{ librenms_backup_target.state }}"
-  when: librenms_backup | default(True)
-
 - name: create librenms backup script
   template:
     src: librenms-backup.sh.j2
@@ -252,8 +229,8 @@
     owner: root
     mode: 0750
   vars:
-    backup_identifier: librenms
-    backup_path: "{{ librenms_backup_target.path }}/librenms"
+    backup_identifier: "{{ librenms_backup_identifier }}"
+    backup_path: "{{ librenms_backup_target }}"
     backup_source: "{{ librenms_root }}/config.php {{ librenms_root }}/rrd {{ librenms_root }}/.env"
     mysql_user: "{{ librenms_db_user }}"
     mysql_pass: "{{ librenms_db_pass }}"
@@ -269,8 +246,8 @@
     owner: root
     mode: 0750
   vars:
-    backup_identifier: librenms
-    backup_path: "{{ librenms_backup_target.path }}/librenms"
+    backup_identifier: "{{ librenms_backup_identifier }}"
+    backup_path: "{{ librenms_backup_target }}"
     mysql_user: "{{ librenms_db_user }}"
     mysql_pass: "{{ librenms_db_pass }}"
     mysql_db: "{{ librenms_db_name }}"
@@ -294,3 +271,12 @@
       echo
     mode: 0755
   when: librenms_backup | default(True)
+
+- name: run librenms validate
+  command: "{{ librenms_root }}/validate.php"
+  register: _validate_output
+  become_user: "{{ librenms_user }}"
+  changed_when: false
+
+- debug:
+    var: _validate_output.stdout_lines

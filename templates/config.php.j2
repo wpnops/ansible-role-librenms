@@ -3,7 +3,7 @@
 ## Have a look in defaults.inc.php for examples of settings you can set here. DO NOT EDIT defaults.inc.php!
 
 ### Database config
-$config['db_host'] = 'localhost';
+$config['db_host'] = '{{ librenms_db_host }}';
 $config['db_port'] = '3306';
 $config['db_user'] = '{{ librenms_config_db_user }}';
 $config['db_pass'] = '{{ librenms_config_db_pass }}';
@@ -29,7 +29,7 @@ $config['user'] = 'librenms';
 $config['snmp']['community'] = array("public");
 
 ### Authentication Model
-$config['auth_mechanism'] = "mysql"; # default, other options: ldap, http-auth
+$config['auth_mechanism'] = '{{ librenms_auth_mechanism }}';
 #$config['http_auth_guest'] = "guest"; # remember to configure this user if you use http-auth
 
 ### List of RFC1918 networks to allow scanning-based discovery
@@ -45,7 +45,7 @@ $config['show_services'] = 1;
 $config['nagios_plugins'] = "/usr/lib/nagios/plugins";
 
 ## Active Directory authentication configuration
-$config['auth_mechanism'] = 'active_directory';
+{% if 'ldap' == librenms_auth_mechanism %}
 $config['auth_ad_url'] = '{{ librenms_config_ldap_servers | map("map_format", "ldap://%s") | join(" ") }}';
 $config['auth_ad_domain'] = '{{ librenms_config_ldap_domain }}';
 $config['auth_ad_base_dn'] = '{{ librenms_config_ldap_domain | split_with(".") | map("map_format", "dc=%s") | join(",") }}';
@@ -56,6 +56,7 @@ $config['auth_ad_debug'] = false;
 $config['auth_ad_require_groupmembership'] = true;
 $config['auth_ad_groups']['{{ librenms_config_ldap_admingroup }}']['level'] = 10;
 $config['auth_ad_groups']['{{ librenms_config_ldap_usergroup }}']['level'] = 5;
+{% endif %}
 
 ## Oxidized integration configuration
 $config['oxidized']['enabled'] = true;

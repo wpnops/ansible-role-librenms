@@ -54,7 +54,10 @@ librenms_php_fpm_service: "php{{ php_default_version_debian }}-fpm"
 librenms_root: /opt/librenms
 librenms_hostname: "{{ librenms_url | urlsplit('hostname') }}"
 librenms_repo_url: https://github.com/librenms/librenms.git
-librenms_backup_target: "{{ backup_target }}"
+librenms_backup_target: "/backup"
+librenms_backup_identifier: "librenms"
+librenms_backup_bin: "/usr/local/bin/librenms-backup"
+librenms_restore_bin: "/usr/local/bin/librenms-restore"
 librenms_mysql_packages_default:
   ubuntu-focal:
     - mariadb-client
@@ -177,6 +180,7 @@ librenms_folder_permissions:
   - storage/framework/cache
   - logs
 
+librenms_auth_mechanism: "mysql"
 librenms_ldap_servers: ""
 librenms_ldap_domain: ""
 librenms_ldap_user: "ldap"
