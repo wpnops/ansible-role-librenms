@@ -6,7 +6,7 @@
 
 - name: restart fpm
   service:
-    name:  "php{{ _librenms_php_version }}-fpm"
+    name: "php{{ _librenms_php_version }}-fpm"
     state: restarted
 
 - name: restart nginx
