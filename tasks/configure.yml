@@ -92,7 +92,6 @@
 - name: install librenms packages
   package:
     name: "{{ _librenms_packages }}"
-    state: latest
 
 - name: install nginx
   include_role:
