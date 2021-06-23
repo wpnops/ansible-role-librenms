@@ -23,6 +23,7 @@ librenms_packages_default:
     - python3-redis
     - python3-setuptools
     - python3-systemd
+    - cron
   redhat:
     - epel-release
     - git
@@ -83,6 +84,13 @@ librenms_php_packages_extra_default:
     - "php{{ _librenms_php_version }}-xml"
     - "php{{ _librenms_php_version }}-zip"
     - "php{{ _librenms_php_version }}-ldap"
+  default: []
+librenms_php_ini_timezone_default:
+  debian:
+    - "/etc/php/{{ _librenms_php_version }}/cli/php.ini"
+    - "/etc/php/{{ _librenms_php_version }}/fpm/php.ini"
+  redhat:
+    - "/etc/php.ini"
   default: []
 
 librenms_composer_path: /usr/local/bin/composer

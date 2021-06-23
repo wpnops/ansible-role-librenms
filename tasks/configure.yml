@@ -18,6 +18,7 @@
 - name: set php packages extra
   set_fact:
     _librenms_php_packages_extra: "{{ librenms_php_packages_extra | default(librenms_php_packages_extra_default | sorted_get(overrides)) }}"
+    _librenms_php_ini_timezone: "{{ librenms_php_ini_timezone | default(librenms_php_ini_timezone_default | sorted_get(overrides)) }}"
   vars:
     overrides:
       - "{{ ansible_distribution | lower }}-{{ ansible_distribution_release | lower }}"
@@ -72,14 +73,14 @@
     path: "{{ item }}"
     regexp: ';?date.timezone\s*='
     line: "date.timezone = {{ librenms_php_timezone }}"
-  with_items:
-    - "/etc/php/{{ _librenms_php_version }}/cli/php.ini"
-    - "/etc/php/{{ _librenms_php_version }}/fpm/php.ini"
-  notify: restart fpm
+  loop: "{{ _librenms_php_ini_timezone }}"
+  notify:
+    - restart fpm
 
 - name: enable php mcrypt
   command: phpenmod mcrypt
   changed_when: false
+  when: (ansible_os_family | lower == 'debian')
 
 - name: start fpm
   service:
