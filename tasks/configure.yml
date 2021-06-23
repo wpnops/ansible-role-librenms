@@ -57,7 +57,8 @@
     - 'innodb_file_per_table=1'
   notify: restart mysql
 
-- meta: flush_handlers
+- name: flush_handlers
+  meta: flush_handlers
 
 - name: install php
   include_role:
@@ -206,7 +207,7 @@
 - name: cron job for cleaup database daily
   cron:
     name: cleanupDB
-    job: "{{ librenms_root}}/daily.sh"
+    job: "{{ librenms_root }}/daily.sh"
     special_time: daily
     user: "{{ librenms_user }}"
 
@@ -280,5 +281,6 @@
   become_user: "{{ librenms_user }}"
   changed_when: false
 
-- debug:
+- name: validate librenms installation
+  debug:
     var: _validate_output.stdout_lines
