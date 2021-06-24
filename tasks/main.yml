@@ -149,11 +149,19 @@
     mode: 0771
     state: directory
 
-- name: set librenms folder permissions
-  command: "{{ item }}"
+- name: set librenms subfolder permissions
+  acl:
+    path: "{{ item }}"
+    etype: group
+    permissions: rwx
+    default: yes
+    recursive: yes
+    state: present
   loop:
-    - "setfacl -d -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
-    - "setfacl -R -m g::rwx {{ librenms_root }}/rrd {{ librenms_root }}/logs {{ librenms_root }}/bootstrap/cache/ {{ librenms_root }}/storage/"
+    - "{{ librenms_root }}/rrd"
+    - "{{ librenms_root }}/logs"
+    - "{{ librenms_root }}/bootstrap/cache"
+    - "{{ librenms_root }}/storage/"
   changed_when: false
 
 - name: manage librenms configuration
@@ -202,6 +210,18 @@
   command: "{{ librenms_root }}/daily.sh"
   become_user: "{{ librenms_user }}"
   changed_when: false
+
+- name: get list of current librenms users
+  command: "mysql -u{{ librenms_db_user }} -p{{ librenms_db_pass }} {{ librenms_db_name }} -e 'SELECT username FROM users'"
+  register: librenms_user_list
+  changed_when: false
+
+- name: create librenms admin user
+  command: "php {{ librenms_root }}/adduser.php {{ librenms_admin_user }} {{ librenms_admin_pass }} 10 {{ librenms_admin_email }}"
+  become_user: "{{ librenms_user }}"
+  when: "librenms_admin_user not in librenms_user_list.stdout_lines"
+  register: librenms_add_admin_user_result
+  changed_when: "'already exists' not in librenms_add_admin_user_result.stdout"
 
 - name: cron job for cleaup database daily
   cron:

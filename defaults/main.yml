@@ -8,10 +8,7 @@ librenms_packages_default:
     - git
     - graphviz
     - imagemagick
-    - mariadb-client
-    - mariadb-server
     - mtr-tiny
-    - nginx-full
     - nmap
     - rrdtool
     - snmp
@@ -24,27 +21,6 @@ librenms_packages_default:
     - python3-setuptools
     - python3-systemd
     - cron
-  redhat:
-    - epel-release
-    - git
-    - cronie
-    - fping
-    - jwhois
-    - ImageMagick
-    - mtr
-    - MySQL-python
-    - net-snmp
-    - net-snmp-utils
-    - nmap
-    - python-memcached
-    - rrdtool
-    - policycoreutils-python
-    - httpd
-    - mariadb
-    - mariadb-server
-    - unzip
-    - python3
-    - python3-pip
 default: []
 
 librenms_url: "http://localhost"
@@ -61,14 +37,9 @@ librenms_mysql_packages_default:
     - mariadb-client
     - mariadb-server
     - python3-mysqldb
-  redhat:
-    - mariadb-server
-    - MySQL-python
-    - mariadb
   default: []
 librenms_mysql_config_path_default:
   debian: "/etc/mysql/mariadb.conf.d/50-server.cnf"
-  redhat: "/etc/my.cnf"
   default: ""
 
 librenms_php_packages_extra_default:
@@ -89,8 +60,6 @@ librenms_php_ini_timezone_default:
   debian:
     - "/etc/php/{{ _librenms_php_version }}/cli/php.ini"
     - "/etc/php/{{ _librenms_php_version }}/fpm/php.ini"
-  redhat:
-    - "/etc/php.ini"
   default: []
 
 librenms_composer_path: /usr/local/bin/composer
@@ -168,6 +137,9 @@ librenms_db_host: localhost
 librenms_db_name: librenms
 librenms_db_user: librenms
 librenms_db_pass: librenms
+librenms_admin_user: "{{ librenms_db_user }}"
+librenms_admin_pass: "{{ librenms_db_pass }}"
+librenms_admin_email: "admin@example.com"
 
 librenms_nfs_server: no
 
@@ -176,7 +148,6 @@ librenms_php_use_managed_ini: no
 librenms_php_version_default:
   ubuntu-focal: 7.4
   debian: 7.3
-  redhat: 7.3
   default: ""
 librenms_php_fpm_service: "php{{ _librenms_php_version }}-fpm"
 librenms_php_timezone: "UTC"
