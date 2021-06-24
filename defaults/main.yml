@@ -1,0 +1,205 @@
+---
+librenms_packages_default:
+  debian:
+    - acl
+    - curl
+    - composer
+    - fping
+    - git
+    - graphviz
+    - imagemagick
+    - mariadb-client
+    - mariadb-server
+    - mtr-tiny
+    - nginx-full
+    - nmap
+    - rrdtool
+    - snmp
+    - snmpd
+    - whois
+    - unzip
+    - python3-pymysql
+    - python3-dotenv
+    - python3-redis
+    - python3-setuptools
+    - python3-systemd
+    - cron
+  redhat:
+    - epel-release
+    - git
+    - cronie
+    - fping
+    - jwhois
+    - ImageMagick
+    - mtr
+    - MySQL-python
+    - net-snmp
+    - net-snmp-utils
+    - nmap
+    - python-memcached
+    - rrdtool
+    - policycoreutils-python
+    - httpd
+    - mariadb
+    - mariadb-server
+    - unzip
+    - python3
+    - python3-pip
+default: []
+
+librenms_url: "http://localhost"
+
+librenms_root: /opt/librenms
+librenms_hostname: "{{ librenms_url | urlsplit('hostname') }}"
+librenms_repo_url: https://github.com/librenms/librenms.git
+librenms_backup_target: "/backup"
+librenms_backup_identifier: "librenms"
+librenms_backup_bin: "/usr/local/bin/librenms-backup"
+librenms_restore_bin: "/usr/local/bin/librenms-restore"
+librenms_mysql_packages_default:
+  debian:
+    - mariadb-client
+    - mariadb-server
+    - python3-mysqldb
+  redhat:
+    - mariadb-server
+    - MySQL-python
+    - mariadb
+  default: []
+librenms_mysql_config_path_default:
+  debian: "/etc/mysql/mariadb.conf.d/50-server.cnf"
+  redhat: "/etc/my.cnf"
+  default: ""
+
+librenms_php_packages_extra_default:
+  debian:
+    - "php{{ _librenms_php_version }}-cli"
+    - "php{{ _librenms_php_version }}-curl"
+    - "php{{ _librenms_php_version }}-fpm"
+    - "php{{ _librenms_php_version }}-gd"
+    - "php{{ _librenms_php_version }}-json"
+    - "php{{ _librenms_php_version }}-mbstring"
+    - "php{{ _librenms_php_version }}-mysql"
+    - "php{{ _librenms_php_version }}-snmp"
+    - "php{{ _librenms_php_version }}-xml"
+    - "php{{ _librenms_php_version }}-zip"
+    - "php{{ _librenms_php_version }}-ldap"
+  default: []
+librenms_php_ini_timezone_default:
+  debian:
+    - "/etc/php/{{ _librenms_php_version }}/cli/php.ini"
+    - "/etc/php/{{ _librenms_php_version }}/fpm/php.ini"
+  redhat:
+    - "/etc/php.ini"
+  default: []
+
+librenms_composer_path: /usr/local/bin/composer
+
+librenms_nginx_user: www-data
+librenms_nginx_group: www-data
+librenms_nginx_conf_dir: /etc/nginx
+librenms_nginx_certificate_hostname: "{{ librenms_hostname }}"
+librenms_nginx_certificate_chainfile: ""
+librenms_nginx_certificate_keyfile: ""
+librenms_nginx_vhost_extra: |
+  keepalive_timeout   300;
+  location / {
+    try_files $uri $uri/ /index.php?$query_string;
+  }
+  location /api/v0 {
+    try_files $uri $uri/ /api_v0.php?$query_string;
+  }
+  location ~ \.php {
+    include fastcgi.conf;
+    fastcgi_split_path_info ^(.+\.php)(/.+)$;
+    fastcgi_pass unix:/var/run/php/php{{ _librenms_php_version }}-fpm.sock;
+  }
+  location ~ /\.ht {
+    deny all;
+  }
+
+librenms_nginx_vhost_proto:
+  http:
+    - listen: "80"
+      server_name: "{{ librenms_hostname }}"
+      filename: "{{ librenms_hostname }}.http.conf"
+      root: "{{ librenms_root }}/html"
+      index: index.php
+      access_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.access.log"
+      error_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.error.log"
+      extra_parameters: |
+        {{ librenms_nginx_vhost_extra }}
+  https:
+    - listen: "80"
+      server_name: "{{ librenms_hostname }}"
+      filename: "{{ librenms_hostname }}.http.conf"
+      access_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.access.log"
+      error_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.error.log"
+      extra_parameters: |
+        return 301 https://{{ librenms_hostname }}$request_uri;
+    - listen: "443 ssl"
+      server_name: "{{ librenms_hostname }}"
+      root: "{{ librenms_root }}/html"
+      index: index.php
+      access_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.access.log"
+      error_log: "/var/log/nginx/{{ librenms_nginx_certificate_hostname }}.error.log"
+      state: "present"
+      filename: "{{ librenms_hostname }}.https.conf"
+      extra_parameters: |
+        ssl_certificate {{ librenms_nginx_certificate_chainfile }};
+        ssl_certificate_key {{ librenms_nginx_certificate_keyfile }};
+        ssl_session_cache   shared:SSL:10m;
+        ssl_session_timeout 10m;
+        ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+        ssl_prefer_server_ciphers on;
+        ssl_stapling on;
+        ssl_ciphers ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-AES256-SHA384:ECDHE-RSA-AES256-SHA384:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES128-SHA256:ECDHE-RSA-AES128-SHA256:ECDHE-RSA-AES256-SHA:DHE-RSA-AES256-SHA;
+        charset utf-8;
+        gzip on;
+        gzip_types text/css application/javascript text/javascript application/x-javascript image/svg+xml text/plain text/xsd text/xsl text/xml image/x-icon;
+        {{ librenms_nginx_vhost_extra }}
+librenms_nginx_vhosts: "{{ librenms_nginx_vhost_proto[librenms_url | urlsplit('scheme')] }}"
+
+librenms_group: librenms
+librenms_user: librenms
+librenms_release: 21.6.0
+
+librenms_db_host: localhost
+librenms_db_name: librenms
+librenms_db_user: librenms
+librenms_db_pass: librenms
+
+librenms_nfs_server: no
+
+librenms_php_webserver_daemon: nginx
+librenms_php_use_managed_ini: no
+librenms_php_version_default:
+  ubuntu-focal: 7.4
+  debian: 7.3
+  redhat: 7.3
+  default: ""
+librenms_php_fpm_service: "php{{ _librenms_php_version }}-fpm"
+librenms_php_timezone: "UTC"
+librenms_memory_limit: "4096M"
+librenms_folder_permissions:
+  - database
+  - includes
+  - vendor
+  - rrd
+  - bootstrap/cache
+  - storage
+  - storage/framework/sessions
+  - storage/framework/views
+  - storage/framework/cache
+  - logs
+
+librenms_auth_mechanism: "mysql"
+librenms_ldap_servers: ""
+librenms_ldap_domain: ""
+librenms_ldap_user: "ldap"
+librenms_ldap_pass: "ChangeMe01!"
+librenms_ldap_admingroup: ""
+librenms_ldap_usergroup: ""
+librenms_update_channel: "release"
+librenms_oxidized_backend_proto: http
+librenms_oxidized_backend_port: 8888

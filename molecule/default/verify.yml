@@ -1,0 +1,26 @@
+---
+- name: Verify
+
+  hosts: all
+
+  become: true
+
+  tasks:
+
+    - name: verify frontpage content
+      uri:
+        url: http://localhost/
+        status_code: 200
+      register: _frontpage_content
+      until: _frontpage_content is not failed
+      retries: 12
+      delay: 15
+
+    - name: run librenms validate
+      command: "{{ librenms_root }}/validate.php"
+      register: _librenms_validate_output
+      become_user: "{{ librenms_user }}"
+
+    - name: debug librenms healthcheck result
+      debug:
+        var: _librenms_validate_output.stdout_lines

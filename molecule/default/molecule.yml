@@ -1,0 +1,25 @@
+---
+dependency:
+  name: galaxy
+driver:
+  name: docker
+platforms:
+  - name: instance
+    image: geerlingguy/docker-${MOLECULE_DOCKER_IMAGE:-ubuntu2004}-ansible:latest
+    command: ${MOLECULE_DOCKER_COMMAND:-""}
+    privileged: true
+    volumes:
+      - "/sys/fs/cgroup:/sys/fs/cgroup:ro"
+    pre_build_image: true
+provisioner:
+  name: ansible
+  log: true
+  inventory:
+    group_vars:
+      all:
+        librenms_root: /opt/librenms
+        librenms_user: librenms
+verifier:
+  name: ansible
+scenario:
+  name: default

@@ -1,0 +1,75 @@
+<?php
+
+## Have a look in defaults.inc.php for examples of settings you can set here. DO NOT EDIT defaults.inc.php!
+
+### Database config
+$config['db_host'] = '{{ librenms_db_host }}';
+$config['db_port'] = '3306';
+$config['db_user'] = '{{ librenms_config_db_user }}';
+$config['db_pass'] = '{{ librenms_config_db_pass }}';
+$config['db_name'] = '{{ librenms_config_db_name }}';
+$config['db_socket'] = '';
+
+// This is the user LibreNMS will run as
+//Please ensure this user is created and has the correct permissions to your install
+$config['user'] = 'librenms';
+
+### Locations - it is recommended to keep the default
+#$config['install_dir']  = "{{ librenms_config_root }}";
+
+### This should *only* be set if you want to *force* a particular hostname/port
+### It will prevent the web interface being usable form any other hostname
+#$config['base_url']        = "{{ librenms_config_url }}";
+
+### Enable this to use rrdcached. Be sure rrd_dir is within the rrdcached dir
+### and that your web server has permission to talk to rrdcached.
+#$config['rrdcached']    = "unix:/var/run/rrdcached.sock";
+
+### Default community
+$config['snmp']['community'] = array("public");
+
+### Authentication Model
+$config['auth_mechanism'] = '{{ librenms_auth_mechanism }}';
+#$config['http_auth_guest'] = "guest"; # remember to configure this user if you use http-auth
+
+### List of RFC1918 networks to allow scanning-based discovery
+#$config['nets'][] = "10.0.0.0/8";
+#$config['nets'][] = "172.16.0.0/12";
+#$config['nets'][] = "192.168.0.0/16";
+
+# Update configuration
+$config['update_channel'] = '{{ librenms_config_update_channel }}';  # uncomment to follow the monthly release channel
+
+## Service monitoring configuration (https://docs.librenms.org/#Extensions/Services/)
+$config['show_services'] = 1;
+$config['nagios_plugins'] = "/usr/lib/nagios/plugins";
+
+## Active Directory authentication configuration
+{% if 'ldap' == librenms_auth_mechanism %}
+$config['auth_ad_url'] = '{{ librenms_config_ldap_servers | map("map_format", "ldap://%s") | join(" ") }}';
+$config['auth_ad_domain'] = '{{ librenms_config_ldap_domain }}';
+$config['auth_ad_base_dn'] = '{{ librenms_config_ldap_domain | split_with(".") | map("map_format", "dc=%s") | join(",") }}';
+$config['auth_ad_binduser'] = '{{ librenms_config_ldap_user }}';
+$config['auth_ad_bindpassword'] = '{{ librenms_config_ldap_pass }}';
+$config['auth_ad_timeout'] = 5;
+$config['auth_ad_debug'] = false;
+$config['auth_ad_require_groupmembership'] = true;
+$config['auth_ad_groups']['{{ librenms_config_ldap_admingroup }}']['level'] = 10;
+$config['auth_ad_groups']['{{ librenms_config_ldap_usergroup }}']['level'] = 5;
+{% endif %}
+
+## Oxidized integration configuration
+$config['oxidized']['enabled'] = true;
+$config['oxidized']['url'] = '{{ oxidized_backend_proto }}://127.0.0.1:{{ oxidized_backend_port }}';
+$config['oxidized']['features']['versioning'] = true;
+$config['oxidized']['group_support'] = true;
+$config['oxidized']['default_group'] = 'default';
+
+## Cleanup options
+$config['syslog_purge']                              = 180;
+$config['eventlog_purge']                            = 180;
+$config['authlog_purge']                             = 180;
+$config['perf_times_purge']                          = 180;
+$config['device_perf_purge']                         = 7;
+$config['rrd_purge']                                 = 180;// Not set by default
+$config['ports_purge']                               = true;// Set to false by default

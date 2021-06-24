@@ -1,0 +1,4 @@
+---
+- name: configure librenms server
+  include_tasks: configure.yml
+  when: configure|default('no') == 'yes'
