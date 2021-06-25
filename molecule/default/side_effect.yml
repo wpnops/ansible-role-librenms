@@ -9,18 +9,17 @@
 
     - name: get librenms admin user id
       command: |
-        mysql -u{{ librenms_admin_user }} -D{{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'select user_id from users where username={{ librenms_admin_user }}'
+        mysql -u{{ librenms_admin_user }} -D{{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'select user_id from users where username="{{ librenms_admin_user }}"'
       register: _librenms_admin_id
 
     - name: ensure librenms admin user is defined
       fail:
         msg: librenms admin user is not created
-      when: _librenms_admin_id != ""
+      when: ( _librenms_admin_id.stdout_lines | list | first ) != ""
 
     - name: create librenms admin token
       command: |
-        mysql -u{{ librenms_admin_user }} -D{{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'insert into api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,{{ _librenms_admin_id.stdout_lines | first }},{{ librenms_admin_token }},"",0);'
-      when: ( _librenms_admin_id.stdout_lines | first ) == ""
+        mysql -u{{ librenms_admin_user }} -D{{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'insert into api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,{{ _librenms_admin_id.stdout_lines | list | first }},{{ librenms_admin_token }},"",0);'
 
     - name: get librenms device
       uri:
