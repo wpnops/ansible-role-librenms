@@ -19,7 +19,7 @@
 
     - name: create librenms admin token
       command: |
-        mysql -u{{ librenms_admin_user }} -D={{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'insert into api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,{{ _librenms_admin_id.stdout_lines | first }},{{ librenms_admin_token }},"",0);'
+        mysql -u{{ librenms_admin_user }} -D{{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'insert into api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,{{ _librenms_admin_id.stdout_lines | first }},{{ librenms_admin_token }},"",0);'
       when: ( _librenms_admin_id.stdout_lines | first ) == ""
 
     - name: get librenms device
