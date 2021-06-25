@@ -15,7 +15,7 @@
     - name: ensure librenms admin user is defined
       fail:
         msg: librenms admin user is not created
-      when: ( _librenms_admin_id.stdout_lines | list | first ) != ""
+      when: ( _librenms_admin_id.stdout_lines | list | first ) == ""
 
     - name: create librenms admin token
       command: |
