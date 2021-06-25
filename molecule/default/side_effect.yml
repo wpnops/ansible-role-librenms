@@ -1,0 +1,73 @@
+---
+- name: side effect
+
+  hosts: all
+
+  become: true
+
+  tasks:
+
+    - name: get librenms admin user id
+      command: |
+        mysql -u{{ librenms_admin_user }} -D={{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'select user_id from users where username={{ librenms_admin_user }}'
+      register: _librenms_admin_id
+
+    - name: ensure librenms admin user is defined
+      fail:
+        msg: librenms admin user is not created
+      when: _librenms_admin_id != ""
+
+    - name: create librenms admin token
+      command: |
+        mysql -u{{ librenms_admin_user }} -D={{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'insert into api_tokens (id,user_id,token_hash,description,disabled) VALUES (1,{{ _librenms_admin_id.stdout_lines | first }},{{ librenms_admin_token }},"",0);'
+      when: ( _librenms_admin_id.stdout_lines | first ) == ""
+
+    - name: get librenms device
+      uri:
+        url: "{{ librenms_api_uri }}/devices/localhost"
+        method: GET
+        body_format: json
+        headers:
+          X-Auth-Token: "{{ librenms_api_token }}"
+      register: _librenms_device
+
+    - name: add librenms device
+      uri:
+        url: "{{ librenms_api_uri }}/devices/"
+        method: POST
+        body_format: json
+        status_code: 201
+        headers:
+          X-Auth-Token: "{{ librenms_api_token }}"
+        body:
+          hostname: localhost
+          version: v2c
+      when: _librenms_device.json.devices == []
+
+    - name: confirm librenms device creation
+      uri:
+        url: "{{ librenms_api_uri }}/devices/localhost"
+        method: GET
+        body_format: json
+        headers:
+          X-Auth-Token: "{{ librenms_api_token }}"
+      failed_when: _librenms_device.json.devices == []
+
+    - name: remove librenms device
+      uri:
+        url: "{{ librenms_api_uri }}/devices/localhost"
+        method: DELETE
+        body_format: json
+        status_code: 200
+        headers:
+          X-Auth-Token: "{{ librenms_api_token }}"
+      when: _librenms_device.json.devices != []
+
+    - name: confirm librenms device deletion
+      uri:
+        url: "{{ librenms_api_uri }}/devices/localhost"
+        method: GET
+        body_format: json
+        headers:
+          X-Auth-Token: "{{ librenms_api_token }}"
+      failed_when: _librenms_device.json.devices != []

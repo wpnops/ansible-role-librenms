@@ -19,6 +19,11 @@ provisioner:
       all:
         librenms_root: /opt/librenms
         librenms_user: librenms
+        librenms_admin_user: librenms
+        librenms_admin_pass: librenms
+        librenms_admin_token: e9bab3639db475105f6eb41b969e7cc4
+        librenms_db_name: librenms
+        librenms_api_uri: http://localhost/api/v0
 verifier:
   name: ansible
 scenario:
