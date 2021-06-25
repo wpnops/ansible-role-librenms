@@ -37,7 +37,7 @@
         body_format: json
         status_code: 201
         headers:
-          X-Auth-Token: "{{ librenms_api_token }}"
+          X-Auth-Token: "{{ librenms_admin_token }}"
         body:
           hostname: localhost
           version: v2c
@@ -49,7 +49,7 @@
         method: GET
         body_format: json
         headers:
-          X-Auth-Token: "{{ librenms_api_token }}"
+          X-Auth-Token: "{{ librenms_admin_token }}"
       failed_when: _librenms_device.json.devices == []
 
     - name: remove librenms device
@@ -59,7 +59,7 @@
         body_format: json
         status_code: 200
         headers:
-          X-Auth-Token: "{{ librenms_api_token }}"
+          X-Auth-Token: "{{ librenms_admin_token }}"
       when: _librenms_device.json.devices != []
 
     - name: confirm librenms device deletion
@@ -68,7 +68,7 @@
         method: GET
         body_format: json
         headers:
-          X-Auth-Token: "{{ librenms_api_token }}"
+          X-Auth-Token: "{{ librenms_admin_token }}"
       failed_when: _librenms_device.json.devices != []
 
     - name: take librenms backup
