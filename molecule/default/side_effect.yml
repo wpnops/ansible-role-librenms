@@ -9,7 +9,7 @@
 
     - name: get librenms admin user id
       command: |
-        mysql -u{{ librenms_admin_user }} -D={{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'select user_id from users where username={{ librenms_admin_user }}'
+        mysql -u{{ librenms_admin_user }} -D{{ librenms_db_name }} -p{{ librenms_admin_pass }} -Ns -e 'select user_id from users where username={{ librenms_admin_user }}'
       register: _librenms_admin_id
 
     - name: ensure librenms admin user is defined
@@ -71,3 +71,45 @@
         headers:
           X-Auth-Token: "{{ librenms_api_token }}"
       failed_when: _librenms_device.json.devices != []
+
+    - name: take librenms backup
+      command: /usr/local/bin/librenms-backup
+      until: _backup_script is not failed
+      retries: 5
+      delay: 5
+
+    - name: kill mysql connections
+      command: |
+        mysql -u {{ librenms_db_user }} -D {{ librenms_db_name }} -p{{ librenms_db_pass }}
+        -e "select concat('KILL ',id,';') from information_schema.processlist"
+
+    - name: drop librenms database
+      command: |
+        mysql -u {{ librenms_db_user }} -p{{ librenms_db_pass }}
+        -e "drop database {{ librenms_db_name }};"
+
+    - name: confirm database does not exist
+      command: |
+        mysql -u {{ librenms_db_user }} -p{{ librenms_db_pass }} \
+        -e "show databases;"
+      register: _database_output
+
+    - name: debug librenms database output
+      debug:
+        var: _database_output.stdout_lines
+
+    - name: verify librenms status after dropping database
+      command: "{{ librenms_root }}/validate.php"
+      become_user: "{{ librenms_user }}"
+      failed_when: false
+      register: _librenms_healthcheck_result
+
+    - name: debug librenms healthcheck result
+      debug:
+        var: _librenms_healthcheck_result.stderr_lines
+
+    - name: perform librenms restore
+      command: /usr/local/bin/librenms-restore
+      until: _restore_script is not failed
+      retries: 5
+      delay: 5
