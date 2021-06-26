@@ -27,7 +27,7 @@
         method: GET
         body_format: json
         headers:
-          X-Auth-Token: "{{ librenms_api_token }}"
+          X-Auth-Token: "{{ librenms_admin_token }}"
       register: _librenms_device
 
     - name: add librenms device
