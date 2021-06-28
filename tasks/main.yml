@@ -243,6 +243,11 @@
     dest: /etc/logrotate.d/librenms
     remote_src: yes
 
+- name: create librenm directories
+  file:
+    path: "{{ librenms_backup_target }}"
+    state: directory
+
 - name: create librenms backup script
   template:
     src: librenms-backup.sh.j2
@@ -293,6 +298,9 @@
       echo
     mode: 0755
   when: librenms_backup | default(True)
+
+- name: flush_handlers
+  meta: flush_handlers
 
 - name: run librenms validate
   command: "{{ librenms_root }}/validate.php"
