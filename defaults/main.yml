@@ -132,7 +132,7 @@ librenms_nginx_vhosts: "{{ librenms_nginx_vhost_proto[librenms_url | urlsplit('s
 
 librenms_group: librenms
 librenms_user: librenms
-librenms_release: 21.7.0
+librenms_release: 21.8.0
 
 librenms_db_host: localhost
 librenms_db_name: librenms
