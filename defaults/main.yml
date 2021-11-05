@@ -56,6 +56,7 @@ librenms_php_packages_extra_default:
     - "php{{ _librenms_php_version }}-xml"
     - "php{{ _librenms_php_version }}-zip"
     - "php{{ _librenms_php_version }}-ldap"
+    - "php{{ _librenms_php_version }}-gmp"
   default: []
 librenms_php_ini_timezone_default:
   debian:
@@ -132,7 +133,7 @@ librenms_nginx_vhosts: "{{ librenms_nginx_vhost_proto[librenms_url | urlsplit('s
 
 librenms_group: librenms
 librenms_user: librenms
-librenms_release: 21.8.0
+librenms_release: 21.10.2
 
 librenms_db_host: localhost
 librenms_db_name: librenms
