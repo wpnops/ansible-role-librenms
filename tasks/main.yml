@@ -140,6 +140,7 @@
     dest: "{{ librenms_root }}"
     version: "{{ librenms_release }}"
     force: yes
+  changed_when: false
 
 - name: fix librenms repository owner
   file:
