@@ -9,11 +9,11 @@
 
     - name: update apt cache.
       apt:
-        update_cache: yes
+        update_cache: tue
       when: (ansible_os_family | lower) == 'debian'
-      failed_when: False
-      ignore_errors: True
-      changed_when: False
+      failed_when: false
+      ignore_errors: true
+      changed_when: false
 
     - name: remove dockerenv
       file:
@@ -24,4 +24,4 @@
 
     - name: wpnops.librenms
       vars:
-        configure: 'yes'
+        configure: true
