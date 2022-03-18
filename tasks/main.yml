@@ -87,7 +87,7 @@
   service:
     name: "php{{ _librenms_php_version }}-fpm"
     state: started
-    enabled: yes
+    enabled: true
 
 - name: install librenms packages
   package:
@@ -105,7 +105,7 @@
     nginx_certificate_hostname: "{{ librenms_nginx_certificate_hostname }}"
     nginx_certificate_chainfile: "{{ librenms_nginx_certificate_chainfile }}"
     nginx_certificate_keyfile: "{{ librenms_nginx_certificate_keyfile }}"
-  when: librenms_nginx_install | default(True)
+  when: librenms_nginx_install | default(true)
 
 - name: create librenms group
   group:
@@ -113,7 +113,7 @@
 
 - name: manage librenms group memberships
   user:
-    append: yes
+    append: true
     name: "{{ librenms_nginx_user }}"
     groups: "{{ librenms_group }}"
   notify:
@@ -125,7 +125,7 @@
     name: "{{ librenms_user }}"
     group: "{{ librenms_group }}"
     groups: "{{ librenms_nginx_group }}"
-    system: yes
+    system: true
 
 - name: create librenms root folder
   file:
@@ -139,7 +139,7 @@
     repo: "{{ librenms_repo_url }}"
     dest: "{{ librenms_root }}"
     version: "{{ librenms_release }}"
-    force: yes
+    force: true
   changed_when: false
 
 - name: fix librenms repository owner
@@ -155,8 +155,8 @@
     path: "{{ item }}"
     etype: group
     permissions: rwx
-    default: yes
-    recursive: yes
+    default: true
+    recursive: true
     state: present
   loop:
     - "{{ librenms_root }}/rrd"
@@ -190,12 +190,9 @@
     - restart nginx
 
 - name: set librenms folder write permissions
-  file:
-    path: "{{ librenms_root }}"
-    owner: "{{ librenms_user }}"
-    group: "{{ librenms_group }}"
-    state: directory
-    recurse: yes
+  command: "chown -R {{ librenms_user }}:{{ librenms_group }} {{ librenms_root }}"
+  tags:
+    - skip_ansible_lint
   changed_when: false
 
 - name: install librenms dependencies
@@ -235,14 +232,14 @@
   copy:
     src: "{{ librenms_root }}/librenms.nonroot.cron"
     dest: /etc/cron.d/librenms
-    remote_src: yes
+    remote_src: true
   notify: restart cron
 
 - name: manage logrotate config
   copy:
     src: "{{ librenms_root }}/misc/librenms.logrotate"
     dest: /etc/logrotate.d/librenms
-    remote_src: yes
+    remote_src: true
 
 - name: create librenm directories
   file:
@@ -264,7 +261,7 @@
     mysql_pass: "{{ librenms_db_pass }}"
     mysql_db: "{{ librenms_db_name }}"
     retention_period: "{{ librenms_backup_retention_period }}"
-  when: librenms_backup | default(True)
+  when: librenms_backup | default(true)
 
 - name: create librenms restore script
   template:
@@ -279,14 +276,14 @@
     mysql_user: "{{ librenms_db_user }}"
     mysql_pass: "{{ librenms_db_pass }}"
     mysql_db: "{{ librenms_db_name }}"
-  when: librenms_backup | default(True)
+  when: librenms_backup | default(true)
 
 - name: manage librenms backup cronjob
   cron:
     name: librenms-conf-backup
     job: "{{ librenms_backup_bin }}"
     special_time: daily
-  when: librenms_backup | default(True)
+  when: librenms_backup | default(true)
 
 - name: create librenms backup motd pointers
   copy:
@@ -298,7 +295,7 @@
       echo run librenms-restore to manually restore latest librenms backup
       echo
     mode: 0755
-  when: librenms_backup | default(True)
+  when: librenms_backup | default(true)
 
 - name: flush_handlers
   meta: flush_handlers

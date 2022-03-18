@@ -16,7 +16,7 @@ dependencies:
   - role: nephelaiio.nfs
     vars:
       nfs_server: "{{ librenms_nfs_server }}"
-    when: librenms_backup | default(True)
+    when: librenms_backup | default(true)
   - role: geerlingguy.nginx
     when: false
   - role: geerlingguy.mysql
